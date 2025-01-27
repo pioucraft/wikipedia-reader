@@ -38,6 +38,8 @@ fs.readFile("raw_wiki.txt", "utf8", (err, data) => {
   // Remove equal signs around text in h2 tags
   data = data.replace(/<h2>=+(.+?)=+<\/h2>/g, "<h2>$1</h2>");
 
+  data = data.replace(/<h3>(.+?)<\/h3>/g, "<h1>$1</h1>");
+
   // Write the content to output.html
   fs.writeFile("output.html", data, "utf8", (err) => {
     if (err) {
