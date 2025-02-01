@@ -1,54 +1,48 @@
-const fs = require("fs");
+const fs = require('fs');
 
 // Read the raw wiki js file
-fs.readFile("raw_wiki.txt", "utf8", (err, data) => {
-  if (err) {
-    console.error("Error reading file:", err);
-    return;
-  }
+fetch('https://en.wikipedia.org/w/index.php?title=Northwest%20Territories&action=raw')
+	.then((response) => response.text())
+	.then((data) => {
+		while (data.includes('{{')) {
+			data = data.replace(/\{\{[^{}]*\}\}/g, '');
+		}
 
-  while (data.includes("{{")) {
-    data = data.replace(/\{\{[^{}]*\}\}/g, "");
-  }
+		// Remove lines that start with "File:"
+		data = data
+			.split('\n')
+			.filter((line) => !line.trim().startsWith('[[File:'))
+			.join('\n');
 
-  // Remove lines that start with "File:"
-  data = data
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("[[File:"))
-    .join("\n");
+		data = data.replace(/<[^>]*>.*?<\/[^>]*>/gs, '');
 
-  data = data.replace(/<[^>]*>.*?<\/[^>]*>/gs, "");
+		data = data.split('==Notes and references==')[0];
+		data = data
+			.split('\n')
+			.filter((line) => line.trim() !== '')
+			.join('\n');
+		data = wiky.process(data);
 
-  data = data.split("==Notes and references==")[0];
-  data = data
-    .split("\n")
-    .filter((line) => line.trim() !== "")
-    .join("\n");
-  data = wiky.process(data);
+		data = data.replace(/\[\[([^\]\|]+)(?:\|([^\]\n]+))?\]\]/g, (match, link, desc) => {
+			return `<a href="/${link}">${desc || link}</a>`;
+		});
 
-  data = data.replace(
-    /\[\[([^\]\|]+)(?:\|([^\]\n]+))?\]\]/g,
-    (match, link, desc) => {
-      return `<a href="/${link}">${desc || link}</a>`;
-    }
-  );
+		data = data.replaceAll('<br/>', '');
 
-  data = data.replaceAll("<br/>", "");
+		// Remove equal signs around text in h2 tags
+		data = data.replace(/<h2>=+(.+?)=+<\/h2>/g, '<h2>$1</h2>');
 
-  // Remove equal signs around text in h2 tags
-  data = data.replace(/<h2>=+(.+?)=+<\/h2>/g, "<h2>$1</h2>");
+		data = data.replace(/<h3>(.+?)<\/h3>/g, '<h1>$1</h1>');
 
-  data = data.replace(/<h3>(.+?)<\/h3>/g, "<h1>$1</h1>");
-
-  // Write the content to output.html
-  fs.writeFile("output.html", data, "utf8", (err) => {
-    if (err) {
-      console.error("Error writing file:", err);
-      return;
-    }
-    console.log("Successfully wrote data to output.html");
-  });
-});
+		// Write the content to output.html
+		fs.writeFile('output.html', data, 'utf8', (err) => {
+			if (err) {
+				console.error('Error writing file:', err);
+				return;
+			}
+			console.log('Successfully wrote data to output.html');
+		});
+	});
 
 /**
  * Wiky.js - Javascript library to converts Wiki MarkUp language to HTML.
@@ -57,301 +51,283 @@ fs.readFile("raw_wiki.txt", "utf8", (err, data) => {
  */
 
 var wiky = {
-  options: {
-    "link-image": true, //Preserve backward compat
-  },
+	options: {
+		'link-image': true //Preserve backward compat
+	}
 };
 
 wiky.process = function (wikitext, options) {
-  wiky.options = options || wiky.options;
+	wiky.options = options || wiky.options;
 
-  var lines = wikitext.split(/\r?\n/);
+	var lines = wikitext.split(/\r?\n/);
 
-  var html = "";
+	var html = '';
 
-  for (i = 0; i < lines.length; i++) {
-    line = lines[i];
-    if (line.match(/^===/) != null && line.match(/===$/) != null) {
-      html += "<h2>" + line.substring(3, line.length - 3) + "</h2>";
-    } else if (line.match(/^==/) != null && line.match(/==$/) != null) {
-      html += "<h3>" + line.substring(2, line.length - 2) + "</h3>";
-    } else if (line.match(/^:+/) != null) {
-      // find start line and ending line
-      start = i;
-      while (i < lines.length && lines[i].match(/^\:+/) != null) i++;
-      i--;
+	for (i = 0; i < lines.length; i++) {
+		line = lines[i];
+		if (line.match(/^===/) != null && line.match(/===$/) != null) {
+			html += '<h2>' + line.substring(3, line.length - 3) + '</h2>';
+		} else if (line.match(/^==/) != null && line.match(/==$/) != null) {
+			html += '<h3>' + line.substring(2, line.length - 2) + '</h3>';
+		} else if (line.match(/^:+/) != null) {
+			// find start line and ending line
+			start = i;
+			while (i < lines.length && lines[i].match(/^\:+/) != null) i++;
+			i--;
 
-      html += wiky.process_indent(lines, start, i);
-    } else if (line.match(/^----+(\s*)$/) != null) {
-      html += "<hr/>";
-    } else if (line.match(/^(\*+) /) != null) {
-      // find start line and ending line
-      start = i;
-      while (i < lines.length && lines[i].match(/^(\*+|\#\#+)\:? /) != null)
-        i++;
-      i--;
+			html += wiky.process_indent(lines, start, i);
+		} else if (line.match(/^----+(\s*)$/) != null) {
+			html += '<hr/>';
+		} else if (line.match(/^(\*+) /) != null) {
+			// find start line and ending line
+			start = i;
+			while (i < lines.length && lines[i].match(/^(\*+|\#\#+)\:? /) != null) i++;
+			i--;
 
-      html += wiky.process_bullet_point(lines, start, i);
-    } else if (line.match(/^(\#+) /) != null) {
-      // find start line and ending line
-      start = i;
-      while (i < lines.length && lines[i].match(/^(\#+|\*\*+)\:? /) != null)
-        i++;
-      i--;
+			html += wiky.process_bullet_point(lines, start, i);
+		} else if (line.match(/^(\#+) /) != null) {
+			// find start line and ending line
+			start = i;
+			while (i < lines.length && lines[i].match(/^(\#+|\*\*+)\:? /) != null) i++;
+			i--;
 
-      html += wiky.process_bullet_point(lines, start, i);
-    } else {
-      html += wiky.process_normal(line);
-    }
+			html += wiky.process_bullet_point(lines, start, i);
+		} else {
+			html += wiky.process_normal(line);
+		}
 
-    html += "<br/>\n";
-  }
+		html += '<br/>\n';
+	}
 
-  return html;
+	return html;
 };
 
 wiky.process_indent = function (lines, start, end) {
-  var i = start;
+	var i = start;
 
-  var html = "<dl>";
+	var html = '<dl>';
 
-  for (var i = start; i <= end; i++) {
-    html += "<dd>";
+	for (var i = start; i <= end; i++) {
+		html += '<dd>';
 
-    var this_count = lines[i].match(/^(\:+)/)[1].length;
+		var this_count = lines[i].match(/^(\:+)/)[1].length;
 
-    html += wiky.process_normal(lines[i].substring(this_count));
+		html += wiky.process_normal(lines[i].substring(this_count));
 
-    var nested_end = i;
-    for (var j = i + 1; j <= end; j++) {
-      var nested_count = lines[j].match(/^(\:+)/)[1].length;
-      if (nested_count <= this_count) break;
-      else nested_end = j;
-    }
+		var nested_end = i;
+		for (var j = i + 1; j <= end; j++) {
+			var nested_count = lines[j].match(/^(\:+)/)[1].length;
+			if (nested_count <= this_count) break;
+			else nested_end = j;
+		}
 
-    if (nested_end > i) {
-      html += wiky.process_indent(lines, i + 1, nested_end);
-      i = nested_end;
-    }
+		if (nested_end > i) {
+			html += wiky.process_indent(lines, i + 1, nested_end);
+			i = nested_end;
+		}
 
-    html += "</dd>";
-  }
+		html += '</dd>';
+	}
 
-  html += "</dl>";
-  return html;
+	html += '</dl>';
+	return html;
 };
 
 wiky.process_bullet_point = function (lines, start, end) {
-  var i = start;
+	var i = start;
 
-  var html = lines[start].charAt(0) == "*" ? "<ul>" : "<ol>";
+	var html = lines[start].charAt(0) == '*' ? '<ul>' : '<ol>';
 
-  html += "\n";
+	html += '\n';
 
-  for (var i = start; i <= end; i++) {
-    html += "<li>";
+	for (var i = start; i <= end; i++) {
+		html += '<li>';
 
-    var this_count = lines[i].match(/^(\*+|\#+) /)[1].length;
+		var this_count = lines[i].match(/^(\*+|\#+) /)[1].length;
 
-    html += wiky.process_normal(lines[i].substring(this_count + 1));
+		html += wiky.process_normal(lines[i].substring(this_count + 1));
 
-    // continue previous with #:
-    {
-      var nested_end = i;
-      for (var j = i + 1; j <= end; j++) {
-        var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
+		// continue previous with #:
+		{
+			var nested_end = i;
+			for (var j = i + 1; j <= end; j++) {
+				var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
 
-        if (nested_count < this_count) break;
-        else {
-          if (lines[j].charAt(nested_count) == ":") {
-            html +=
-              "<br/>" +
-              wiky.process_normal(lines[j].substring(nested_count + 2));
-            nested_end = j;
-          } else {
-            break;
-          }
-        }
-      }
+				if (nested_count < this_count) break;
+				else {
+					if (lines[j].charAt(nested_count) == ':') {
+						html += '<br/>' + wiky.process_normal(lines[j].substring(nested_count + 2));
+						nested_end = j;
+					} else {
+						break;
+					}
+				}
+			}
 
-      i = nested_end;
-    }
+			i = nested_end;
+		}
 
-    // nested bullet point
-    {
-      var nested_end = i;
-      for (var j = i + 1; j <= end; j++) {
-        var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
-        if (nested_count <= this_count) break;
-        else nested_end = j;
-      }
+		// nested bullet point
+		{
+			var nested_end = i;
+			for (var j = i + 1; j <= end; j++) {
+				var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
+				if (nested_count <= this_count) break;
+				else nested_end = j;
+			}
 
-      if (nested_end > i) {
-        html += wiky.process_bullet_point(lines, i + 1, nested_end);
-        i = nested_end;
-      }
-    }
+			if (nested_end > i) {
+				html += wiky.process_bullet_point(lines, i + 1, nested_end);
+				i = nested_end;
+			}
+		}
 
-    // continue previous with #:
-    {
-      var nested_end = i;
-      for (var j = i + 1; j <= end; j++) {
-        var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
+		// continue previous with #:
+		{
+			var nested_end = i;
+			for (var j = i + 1; j <= end; j++) {
+				var nested_count = lines[j].match(/^(\*+|\#+)\:? /)[1].length;
 
-        if (nested_count < this_count) break;
-        else {
-          if (lines[j].charAt(nested_count) == ":") {
-            html += wiky.process_normal(lines[j].substring(nested_count + 2));
-            nested_end = j;
-          } else {
-            break;
-          }
-        }
-      }
+				if (nested_count < this_count) break;
+				else {
+					if (lines[j].charAt(nested_count) == ':') {
+						html += wiky.process_normal(lines[j].substring(nested_count + 2));
+						nested_end = j;
+					} else {
+						break;
+					}
+				}
+			}
 
-      i = nested_end;
-    }
+			i = nested_end;
+		}
 
-    html += "</li>\n";
-  }
+		html += '</li>\n';
+	}
 
-  html += lines[start].charAt(0) == "*" ? "</ul>" : "</ol>";
-  html += "\n";
-  return html;
+	html += lines[start].charAt(0) == '*' ? '</ul>' : '</ol>';
+	html += '\n';
+	return html;
 };
 
 wiky.process_url = function (txt) {
-  var index = txt.indexOf(" "),
-    url = txt,
-    label = txt,
-    css =
-      ' style="background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAFZJREFUeF59z4EJADEIQ1F36k7u5E7ZKXeUQPACJ3wK7UNokVxVk9kHnQH7bY9hbDyDhNXgjpRLqFlo4M2GgfyJHhjq8V4agfrgPQX3JtJQGbofmCHgA/nAKks+JAjFAAAAAElFTkSuQmCC") no-repeat scroll right center transparent;padding-right: 13px;"';
+	var index = txt.indexOf(' '),
+		url = txt,
+		label = txt,
+		css =
+			' style="background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAFZJREFUeF59z4EJADEIQ1F36k7u5E7ZKXeUQPACJ3wK7UNokVxVk9kHnQH7bY9hbDyDhNXgjpRLqFlo4M2GgfyJHhjq8V4agfrgPQX3JtJQGbofmCHgA/nAKks+JAjFAAAAAElFTkSuQmCC") no-repeat scroll right center transparent;padding-right: 13px;"';
 
-  if (index !== -1) {
-    url = txt.substring(0, index);
-    label = txt.substring(index + 1);
-  }
-  return (
-    '<a href="' +
-    url +
-    '"' +
-    (wiky.options["link-image"] ? css : "") +
-    ">" +
-    label +
-    "</a>"
-  );
+	if (index !== -1) {
+		url = txt.substring(0, index);
+		label = txt.substring(index + 1);
+	}
+	return '<a href="' + url + '"' + (wiky.options['link-image'] ? css : '') + '>' + label + '</a>';
 };
 
 wiky.process_image = function (txt) {
-  var index = txt.indexOf(" ");
-  url = txt;
-  label = "";
+	var index = txt.indexOf(' ');
+	url = txt;
+	label = '';
 
-  if (index > -1) {
-    url = txt.substring(0, index);
-    label = txt.substring(index + 1);
-  }
+	if (index > -1) {
+		url = txt.substring(0, index);
+		label = txt.substring(index + 1);
+	}
 
-  return "<img src='" + url + "' alt=\"" + label + '" />';
+	return "<img src='" + url + '\' alt="' + label + '" />';
 };
 
 wiky.process_video = function (url) {
-  if (url.match(/^(https?:\/\/)?(www.)?youtube.com\//) == null) {
-    return "<b>" + url + " is an invalid YouTube URL</b>";
-  }
+	if (url.match(/^(https?:\/\/)?(www.)?youtube.com\//) == null) {
+		return '<b>' + url + ' is an invalid YouTube URL</b>';
+	}
 
-  if (
-    (result = url.match(
-      /^(https?:\/\/)?(www.)?youtube.com\/watch\?(.*)v=([^&]+)/
-    )) != null
-  ) {
-    url = "http://www.youtube.com/embed/" + result[4];
-  }
+	if ((result = url.match(/^(https?:\/\/)?(www.)?youtube.com\/watch\?(.*)v=([^&]+)/)) != null) {
+		url = 'http://www.youtube.com/embed/' + result[4];
+	}
 
-  return (
-    '<iframe width="480" height="390" src="' +
-    url +
-    '" frameborder="0" allowfullscreen></iframe>'
-  );
+	return (
+		'<iframe width="480" height="390" src="' + url + '" frameborder="0" allowfullscreen></iframe>'
+	);
 };
 
 wiky.process_normal = function (wikitext) {
-  // Image
-  {
-    var index = wikitext.indexOf("[[File:");
-    var end_index = wikitext.indexOf("]]", index + 7);
-    while (index > -1 && end_index > -1) {
-      wikitext =
-        wikitext.substring(0, index) +
-        wiky.process_image(wikitext.substring(index + 7, end_index)) +
-        wikitext.substring(end_index + 2);
+	// Image
+	{
+		var index = wikitext.indexOf('[[File:');
+		var end_index = wikitext.indexOf(']]', index + 7);
+		while (index > -1 && end_index > -1) {
+			wikitext =
+				wikitext.substring(0, index) +
+				wiky.process_image(wikitext.substring(index + 7, end_index)) +
+				wikitext.substring(end_index + 2);
 
-      index = wikitext.indexOf("[[File:");
-      end_index = wikitext.indexOf("]]", index + 7);
-    }
-  }
+			index = wikitext.indexOf('[[File:');
+			end_index = wikitext.indexOf(']]', index + 7);
+		}
+	}
 
-  // Video
-  {
-    var index = wikitext.indexOf("[[Video:");
-    var end_index = wikitext.indexOf("]]", index + 8);
-    while (index > -1 && end_index > -1) {
-      wikitext =
-        wikitext.substring(0, index) +
-        wiky.process_video(wikitext.substring(index + 8, end_index)) +
-        wikitext.substring(end_index + 2);
+	// Video
+	{
+		var index = wikitext.indexOf('[[Video:');
+		var end_index = wikitext.indexOf(']]', index + 8);
+		while (index > -1 && end_index > -1) {
+			wikitext =
+				wikitext.substring(0, index) +
+				wiky.process_video(wikitext.substring(index + 8, end_index)) +
+				wikitext.substring(end_index + 2);
 
-      index = wikitext.indexOf("[[Video:");
-      end_index = wikitext.indexOf("]]", index + 8);
-    }
-  }
+			index = wikitext.indexOf('[[Video:');
+			end_index = wikitext.indexOf(']]', index + 8);
+		}
+	}
 
-  // URL
-  var protocols = ["http", "ftp", "news"];
+	// URL
+	var protocols = ['http', 'ftp', 'news'];
 
-  for (var i = 0; i < protocols.length; i++) {
-    var index = wikitext.indexOf("[" + protocols[i] + "://");
-    var end_index = wikitext.indexOf("]", index + 1);
-    while (index > -1 && end_index > -1) {
-      wikitext =
-        wikitext.substring(0, index) +
-        wiky.process_url(wikitext.substring(index + 1, end_index)) +
-        wikitext.substring(end_index + 1);
+	for (var i = 0; i < protocols.length; i++) {
+		var index = wikitext.indexOf('[' + protocols[i] + '://');
+		var end_index = wikitext.indexOf(']', index + 1);
+		while (index > -1 && end_index > -1) {
+			wikitext =
+				wikitext.substring(0, index) +
+				wiky.process_url(wikitext.substring(index + 1, end_index)) +
+				wikitext.substring(end_index + 1);
 
-      index = wikitext.indexOf("[" + protocols[i] + "://", end_index + 1);
-      end_index = wikitext.indexOf("]", index + 1);
-    }
-  }
+			index = wikitext.indexOf('[' + protocols[i] + '://', end_index + 1);
+			end_index = wikitext.indexOf(']', index + 1);
+		}
+	}
 
-  var count_b = 0;
-  var index = wikitext.indexOf("'''");
-  while (index > -1) {
-    if (count_b % 2 == 0) wikitext = wikitext.replace(/'''/, "<b>");
-    else wikitext = wikitext.replace(/'''/, "</b>");
+	var count_b = 0;
+	var index = wikitext.indexOf("'''");
+	while (index > -1) {
+		if (count_b % 2 == 0) wikitext = wikitext.replace(/'''/, '<b>');
+		else wikitext = wikitext.replace(/'''/, '</b>');
 
-    count_b++;
+		count_b++;
 
-    index = wikitext.indexOf("'''", index);
-  }
+		index = wikitext.indexOf("'''", index);
+	}
 
-  var count_i = 0;
-  var index = wikitext.indexOf("''");
-  while (index > -1) {
-    if (count_i % 2 == 0) wikitext = wikitext.replace(/''/, "<i>");
-    else wikitext = wikitext.replace(/''/, "</i>");
+	var count_i = 0;
+	var index = wikitext.indexOf("''");
+	while (index > -1) {
+		if (count_i % 2 == 0) wikitext = wikitext.replace(/''/, '<i>');
+		else wikitext = wikitext.replace(/''/, '</i>');
 
-    count_i++;
+		count_i++;
 
-    index = wikitext.indexOf("''", index);
-  }
+		index = wikitext.indexOf("''", index);
+	}
 
-  wikitext = wikitext.replace(/<\/b><\/i>/g, "</i></b>");
+	wikitext = wikitext.replace(/<\/b><\/i>/g, '</i></b>');
 
-  return wikitext;
+	return wikitext;
 };
 
-if (typeof exports === "object") {
-  for (var i in wiky) {
-    exports[i] = wiky[i];
-  }
+if (typeof exports === 'object') {
+	for (var i in wiky) {
+		exports[i] = wiky[i];
+	}
 }
