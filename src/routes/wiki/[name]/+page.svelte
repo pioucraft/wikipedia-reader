@@ -4,14 +4,15 @@
 </script>
 
 <div class="max-lg:items-auto flex flex-col items-center p-5 max-xl:items-center">
-	<div class="text-justify min-lg:max-w-[650px]">
+	<div class="max-w-full p-5 break-words min-lg:max-w-[650px]">
 		<h1>{data.title}</h1>
 		<div class="flex flex-row items-baseline gap-5">
 			<h2><em>From Wikipedia,</em></h2>
 			<a href="https://en.wikipedia.org/wiki/{data.name}" target="_blank">(view source)</a>
 		</div>
-
-		{@html data.html}
+		<div class="text-justify">
+			{@html data.html}
+		</div>
 	</div>
 </div>
 

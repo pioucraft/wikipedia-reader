@@ -19,6 +19,7 @@ class WikiParser {
 	constructor() {}
 
 	parse(text: string) {
+		text = this.removeCommentaries(text);
 		text = this.removeImages(text);
 		text = this.parseHeadings(text);
 		text = this.parseLinks(text);
@@ -29,6 +30,10 @@ class WikiParser {
 		text = this.parseItalic(text);
 
 		return text;
+	}
+
+	removeCommentaries(text: string) {
+		return text.replace(/<!--.*?-->/g, '');
 	}
 
 	removeImages(text: string) {
@@ -53,8 +58,8 @@ class WikiParser {
 	}
 
 	removeBracesContent(text: string) {
-		while (/\{\{[^{}]*\}\}/.test(text)) {
-			text = text.replace(/\{\{[^{}]*\}\}/g, '');
+		while (/\{[^{}]*\}/.test(text)) {
+			text = text.replace(/\{[^{}]*\}/g, '');
 		}
 		return text;
 	}
