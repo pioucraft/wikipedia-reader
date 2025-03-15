@@ -3,8 +3,8 @@
 	console.log(data);
 </script>
 
-<div class="flex flex-col items-center p-5 max-xl:items-start">
-	<div class="text-justify min-lg:w-[650px]">
+<div class="max-lg:items-auto flex flex-col items-center p-5 max-xl:items-center">
+	<div class="text-justify min-lg:max-w-[650px]">
 		<h1>{data.title}</h1>
 		<div class="flex flex-row items-baseline gap-5">
 			<h2><em>From Wikipedia,</em></h2>
