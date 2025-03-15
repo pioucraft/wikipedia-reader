@@ -9,7 +9,9 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const parser = new WikiParser();
 	return {
-		html: parser.parse(wikitext)
+		html: parser.parse(wikitext),
+		title: data.parse.title,
+		name: params.name
 	};
 };
 
@@ -69,7 +71,7 @@ class WikiParser {
 	}
 
 	parseBold(text: string) {
-		return text.replace(/'''([^']+)'''/g, '<strong>$1</strong>');
+		return text.replace(/'''((?:(?!''').)*?)'''/g, '<strong>$1</strong>');
 	}
 
 	parseItalic(text: string) {

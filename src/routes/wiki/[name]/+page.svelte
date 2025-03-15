@@ -3,8 +3,16 @@
 	console.log(data);
 </script>
 
-<div class="p-5">
-	{@html data.html}
+<div class="flex flex-col items-center p-5 max-xl:items-start">
+	<div class="text-justify min-lg:w-[650px]">
+		<h1>{data.title}</h1>
+		<div class="flex flex-row items-baseline gap-5">
+			<h2><em>From Wikipedia,</em></h2>
+			<a href="https://en.wikipedia.org/wiki/{data.name}" target="_blank">(view source)</a>
+		</div>
+
+		{@html data.html}
+	</div>
 </div>
 
 <style>
@@ -34,5 +42,9 @@
 
 	:global(a) {
 		text-decoration: underline;
+	}
+
+	:global(p) {
+		margin-bottom: 1em;
 	}
 </style>
