@@ -3,17 +3,8 @@
 	console.log(data);
 </script>
 
-<div class="max-lg:items-auto flex flex-col items-center p-5 max-xl:items-center">
-	<div class="max-w-full p-5 break-words min-lg:max-w-[650px]">
-		<h1>{data.title}</h1>
-		<div class="flex flex-row items-baseline gap-5">
-			<h2><em>From Wikipedia,</em></h2>
-			<a href="https://en.wikipedia.org/wiki/{data.name}" target="_blank">(view source)</a>
-		</div>
-		<div class="text-justify">
-			{@html data.html}
-		</div>
-	</div>
+<div class="p-5 text-justify">
+	{@html data.html}
 </div>
 
 <style>
@@ -47,5 +38,25 @@
 
 	:global(p) {
 		margin-bottom: 1em;
+	}
+
+	:global(.infobox) {
+		width: 400px;
+		border: 2px solid #a2a9b1;
+		margin: 0 0 1em 1em;
+	}
+
+	@media (max-width: 999px) {
+		:global(.infobox) {
+			width: 100%; /* Full width on mobile */
+			float: none;
+			margin: 0;
+		}
+	}
+
+	@media (min-width: 1000px) {
+		:global(.infobox) {
+			float: right; /* Position on the right on PC */
+		}
 	}
 </style>

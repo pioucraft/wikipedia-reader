@@ -1,85 +1,39 @@
+// @ts-nocheck
 import type { PageServerLoad } from './$types';
+import { JSDOM } from 'jsdom';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const response = await fetch(
-		`https://en.wikipedia.org/w/api.php?action=parse&page=${params.name}&format=json&prop=wikitext`
-	);
-	const data = await response.json();
-	const wikitext = data.parse.wikitext['*'];
+export const load: PageServerLoad = async ({ params, request }) => {
+	const userAgent = request.headers.get('user-agent') || '';
+	const isMobile = /mobile/i.test(userAgent);
+	const baseUrl = isMobile ? 'https://en.m.wikipedia.org/wiki/' : 'https://en.wikipedia.org/wiki/';
+	const response = await fetch(`${baseUrl}${params.name}`);
+	const data = await response.text();
 
-	const parser = new WikiParser();
+	const dom = new JSDOM(data);
+	const document = dom.window.document;
+	// Remove unnecessary elements
+	const elementsToRemove = [
+		'.vector-header-container',
+		'.mw-footer-container',
+		'.mw-footer-container',
+		'.vector-column-end',
+		'.vector-column-start',
+		'.vector-toc-landmark',
+		'.firstHeading',
+		'#p-lang-btn',
+		'.vector-page-toolbar',
+		'.vector-body-before-content',
+		'.header-container',
+		'.pre-content',
+		'.mw-jump-link'
+	];
+	elementsToRemove.forEach((selector) => {
+		const elements = document.querySelectorAll(selector);
+		elements.forEach((element: any) => element.remove());
+	});
+
 	return {
-		html: parser.parse(wikitext),
-		title: data.parse.title,
+		html: document.documentElement.outerHTML,
 		name: params.name
 	};
 };
-
-class WikiParser {
-	constructor() {}
-
-	parse(text: string) {
-		text = this.removeCommentaries(text);
-		text = this.removeImages(text);
-		text = this.parseHeadings(text);
-		text = this.parseLinks(text);
-		text = this.removeBracesContent(text);
-		text = this.wrapInParagraphs(text);
-		text = this.removeRefs(text);
-		text = this.parseBold(text);
-		text = this.parseItalic(text);
-
-		return text;
-	}
-
-	removeCommentaries(text: string) {
-		return text.replace(/<!--.*?-->/g, '');
-	}
-
-	removeImages(text: string) {
-		return text
-			.split('\n')
-			.filter((line) => !line.startsWith('[[File:'))
-			.join('\n');
-	}
-
-	parseHeadings(text: string) {
-		return text.replace(/^(={2,6})\s*(.+?)\s*\1$/gm, (match, equals, content) => {
-			const level = equals.length;
-			return `<h${level}>${content}</h${level}>`;
-		});
-	}
-
-	parseLinks(text: string) {
-		return text.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (match, target, label) => {
-			label = label || target;
-			return `<a href="/wiki/${encodeURIComponent(target)}">${label}</a>`;
-		});
-	}
-
-	removeBracesContent(text: string) {
-		while (/\{[^{}]*\}/.test(text)) {
-			text = text.replace(/\{[^{}]*\}/g, '');
-		}
-		return text;
-	}
-
-	wrapInParagraphs(text: string) {
-		return text
-			.split(/\n+/)
-			.map((line) => (line.trim() ? `<p>${line}</p>` : ''))
-			.join('\n');
-	}
-
-	removeRefs(text: string) {
-		return text.replace(/<ref[^>]*>.*?<\/ref>/g, '');
-	}
-
-	parseBold(text: string) {
-		return text.replace(/'''((?:(?!''').)*?)'''/g, '<strong>$1</strong>');
-	}
-
-	parseItalic(text: string) {
-		return text.replace(/''((?:(?!''').)*?)''/g, '<em>$1</em>');
-	}
-}
