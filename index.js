@@ -1,4 +1,4 @@
-// ALGORITHM!!!!!!!!!!!!! DO NOT TOUCH !!!!!
+// ALGORITHM!!!!!!!!!!!!! DO NOT TOUCH !!!!! ACtually, touch it
 
 let links = [];
 const main = async (path, next) => {
@@ -13,7 +13,9 @@ const main = async (path, next) => {
         const toFetchLinks = links;
         let index = 0;
         for (let link of links) {
-            if (link.startsWith("Category:")) {
+            console.log(link);
+            if (link.startsWith("/wiki/Category:")) {
+                console.log(link);
                 main(link, false);
                 index++;
                 console.log(index);
@@ -27,7 +29,7 @@ const main = async (path, next) => {
             }, {});
             const sortedLinks = Object.entries(counts1)
                 .sort(([, a], [, b]) => b - a)
-                .slice(0, 50)
+                .slice(0, 150)
                 .reduce((acc, [key, value]) => {
                     acc[key] = value;
                     return acc;
