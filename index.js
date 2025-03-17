@@ -1,42 +1,43 @@
 // ALGORITHM!!!!!!!!!!!!! DO NOT TOUCH !!!!! ACtually, touch it
 
 let links = [];
+let categoryLinks = [];
 const main = async (path, next) => {
     let data = await (await fetch(`https://en.wikipedia.org/${path}`)).text();
 
-    links = links.concat(
-        data
-            .match(/href="\/wiki\/[^"]+"/g)
-            .map((link) => link.match(/\/wiki\/[^"]+/)[0])
-    );
+    links = data
+        .match(/href="\/wiki\/[^"]+"/g)
+        .map((link) => link.match(/\/wiki\/[^"]+/)[0]);
+
     if (next) {
-        const toFetchLinks = links;
-        let index = 0;
-        for (let link of links) {
-            console.log(link);
-            if (link.startsWith("/wiki/Category:")) {
-                console.log(link);
-                main(link, false);
-                index++;
-                console.log(index);
-            }
+        const categoryPath = links.find((link) =>
+            link.startsWith("/wiki/Category:")
+        );
+        if (categoryPath) {
+            let categoryData = await (
+                await fetch(`https://en.wikipedia.org${categoryPath}`)
+            ).text();
+            categoryLinks = categoryData
+                .match(/href="\/wiki\/[^"]+"/g)
+                .map((link) => link.match(/\/wiki\/[^"]+/)[0]);
         }
-        console.log(links);
-        setTimeout(() => {
-            let counts1 = links.reduce((acc, link) => {
-                acc[link] = (acc[link] || 0) + 1;
+
+        const commonLinks = links.filter((link) =>
+            categoryLinks.includes(link)
+        );
+        let counts = commonLinks.reduce((acc, link) => {
+            acc[link] = (acc[link] || 0) + 1;
+            return acc;
+        }, {});
+
+        const sortedLinks = Object.entries(counts)
+            .sort(([, a], [, b]) => b - a)
+            .reduce((acc, [key, value]) => {
+                acc[key] = value;
                 return acc;
             }, {});
-            const sortedLinks = Object.entries(counts1)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 150)
-                .reduce((acc, [key, value]) => {
-                    acc[key] = value;
-                    return acc;
-                }, {});
-            counts1 = sortedLinks;
-            console.log(counts1);
-        }, 10000);
+
+        console.log(sortedLinks);
     }
 };
 
