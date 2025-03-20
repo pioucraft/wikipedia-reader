@@ -1,5 +1,5 @@
 {
-  "id": "a3897627-0c6c-48b2-bb61-05bf6c08171a",
+  "id": "71598f76-e06a-455f-82bf-05ec68497433",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -24,13 +24,15 @@
           "name": "loaded",
           "type": "date[]",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'{\"now()\"}'"
         },
         "read": {
           "name": "read",
-          "type": "date[]",
+          "type": "date",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'now()'"
         },
         "weight": {
           "name": "weight",
