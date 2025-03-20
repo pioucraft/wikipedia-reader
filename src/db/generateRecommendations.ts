@@ -69,3 +69,5 @@ async function updateRecommendations() {
         articlesToUpdate.map((article) => article.link)
     );
 }
+
+export default updateRecommendations;
