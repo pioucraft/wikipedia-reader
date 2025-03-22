@@ -65,9 +65,32 @@ async function updateRecommendations() {
                     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
     );
 
-    await updateSingleRecommendations(
-        articlesToUpdate.map((article) => article.link)
-    );
+    if (articlesToUpdate)
+        await updateSingleRecommendations(
+            articlesToUpdate.map((article) => article.link)
+        );
+    await storeRecommendations();
 }
+
+async function storeRecommendations() {
+    const recommendationsFromArticles = await db
+        .select({ links: articles.links })
+        .from(articles)
+        .where(gt(articles.read, sql`NOW() - INTERVAL '3 months'`));
+    if (!recommendationsFromArticles) return;
+    let recommendations: any = {};
+    for (let recommendationsFromArticle of recommendationsFromArticles) {
+        // @ts-ignore
+        for (let link of recommendationsFromArticle.links) {
+            // @ts-ignore
+            recommendations[link.link] =
+                // @ts-ignore
+                (recommendations[link.link] ?? 0) + link.weight;
+        }
+    }
+    console.log(recommendations);
+}
+
+updateRecommendations();
 
 export default updateRecommendations;
