@@ -83,12 +83,22 @@ async function storeRecommendations() {
         // @ts-ignore
         for (let link of recommendationsFromArticle.links) {
             // @ts-ignore
-            recommendations[link.link] =
+            recommendations[`https://en.wikipedia.org${link.link}`] =
                 // @ts-ignore
                 (recommendations[link.link] ?? 0) + link.weight;
         }
     }
-    console.log(recommendations);
+    recommendations = Object.entries(recommendations)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .map(([link, weight]) => ({ link, weight: weight as number }));
+    await db.update(articles).set({ weight: 0 });
+    await db
+        .insert(articles)
+        .values(recommendations)
+        .onConflictDoUpdate({
+            target: articles.link,
+            set: { weight: sql`EXCLUDED.weight` },
+        });
 }
 
 updateRecommendations();
